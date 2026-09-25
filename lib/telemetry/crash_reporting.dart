@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
+import 'aim_log.dart';
 import 'game_watch.dart';
 
 enum AppScreen { home, search, match, result, blocked }
@@ -56,6 +57,27 @@ class CrashReportingService {
 
   void capability(int allowed) {
     game(GameSignal.capability, {'allowed': allowed});
+  }
+
+  void aim(AimThrow throwAim) {
+    game(GameSignal.aim, throwAim.data);
+  }
+
+  Future<void> roundSummary(Map<String, num> data) async {
+    if (!enabled) return;
+    attempts += 1;
+    if (record != null) {
+      record!('info:round_summary:${_pack(data)}');
+      return;
+    }
+    await Sentry.captureMessage(
+      'round_summary',
+      level: SentryLevel.info,
+      withScope: (scope) async {
+        await scope.setTag('game', 'round_summary');
+        await scope.setContexts('game', data);
+      },
+    );
   }
 
   Future<void> failure(GameSignal signal, [Map<String, num> data = const {}]) async {

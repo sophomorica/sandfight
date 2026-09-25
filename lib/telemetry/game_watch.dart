@@ -21,6 +21,7 @@ enum GameSignal {
   fallback,
   permissionDenied,
   sessionError,
+  aim,
 }
 
 class GameCrumb {

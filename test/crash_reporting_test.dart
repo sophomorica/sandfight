@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sandfight/telemetry/aim_log.dart';
 import 'package:sandfight/telemetry/crash_reporting.dart';
 import 'package:sandfight/telemetry/game_watch.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -13,6 +14,18 @@ void main() {
     service.capability(0);
     await service.failure(GameSignal.permissionDenied, {'state': 2});
     await service.handled(StateError('down'), StackTrace.empty, GameSignal.sessionError, {'code': 4});
+    service.aim(const AimThrow(
+      angleDeg: 0,
+      speed: 1,
+      lengthPx: 40,
+      durationMs: 80,
+      bearingDeg: 0,
+      distance: 1.6,
+      direction: 1,
+      onTarget: 1,
+      missDeg: 0,
+    ));
+    await service.roundSummary({'throws': 1, 'hits': 1, 'misses': 0, 'mean_miss': 0, 'max_miss': 0, 'no_direction': 0, 'length_ms': 10});
     expect(service.enabled, false);
     expect(service.attempts, 0);
     expect(lines, isEmpty);

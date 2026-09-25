@@ -17,6 +17,7 @@ import 'net/ble_session.dart';
 import 'net/session.dart';
 import 'net/tcp_pipe.dart';
 import 'net/uwb_pose.dart';
+import 'telemetry/aim_log.dart';
 import 'telemetry/crash_reporting.dart';
 import 'telemetry/game_watch.dart';
 import 'theme/palette.dart';
@@ -53,6 +54,7 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
   var _peerCount = 0;
   AppScreen? _seenScreen;
   int? _capability;
+  final _aimRound = AimRound();
 
   @override
   void initState() {
@@ -320,6 +322,7 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
   }
 
   Future<void> _leave() async {
+    _finishRound(_match?.tMs ?? 0);
     _epoch++;
     await _tcp?.cancel();
     _tcp = null;
@@ -388,13 +391,32 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     final crumbs = watchMatch(_sample, next);
     _sample = next;
     final report = CrashReportingService.instance;
+    var roundEnded = false;
+    var lengthMs = 0;
     for (final crumb in crumbs) {
+      if (crumb.signal == GameSignal.roundEnd) {
+        roundEnded = true;
+        lengthMs = crumb.data['t_ms']?.toInt() ?? next.tMs;
+      }
       if (crumb.signal == GameSignal.peerLost) {
         unawaited(report.failure(crumb.signal, crumb.data));
       } else {
         report.game(crumb.signal, crumb.data);
       }
     }
+    if (roundEnded) _finishRound(lengthMs);
+  }
+
+  void _onAim(AimThrow throwAim) {
+    _aimRound.add(throwAim);
+    CrashReportingService.instance.aim(throwAim);
+  }
+
+  void _finishRound(int lengthMs) {
+    if (_aimRound.throws == 0) return;
+    final data = _aimRound.summary(lengthMs);
+    _aimRound.reset();
+    unawaited(CrashReportingService.instance.roundSummary(data));
   }
 
   @override
@@ -428,6 +450,7 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
         match: match,
         seat: _seat,
         onSwipe: _swipe,
+        onAim: _onAim,
         onTruck: _truck,
         onLeave: _leave,
       ),

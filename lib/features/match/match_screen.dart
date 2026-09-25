@@ -6,16 +6,26 @@ import '../../game/truck.dart';
 import '../../haptic_player.dart';
 import '../../render/sand_field.dart';
 import '../../render/truck_sprite.dart';
+import '../../telemetry/aim_log.dart';
 import '../../theme/palette.dart';
 
 class MatchScreen extends StatefulWidget {
-  const MatchScreen({super.key, required this.match, required this.seat, required this.onSwipe, required this.onTruck, required this.onLeave});
+  const MatchScreen({
+    super.key,
+    required this.match,
+    required this.seat,
+    required this.onSwipe,
+    required this.onTruck,
+    required this.onLeave,
+    this.onAim,
+  });
 
   final Match match;
   final Seat seat;
   final void Function(Vec2 origin, Vec2 local, double speed) onSwipe;
   final void Function(Vec2 local) onTruck;
   final VoidCallback onLeave;
+  final void Function(AimThrow throwAim)? onAim;
 
   @override
   State<MatchScreen> createState() => _MatchScreenState();
@@ -26,6 +36,7 @@ class _MatchScreenState extends State<MatchScreen> with SingleTickerProviderStat
   int _seenImpact = 0;
   int _played = 0;
   Offset _drag = Offset.zero;
+  DateTime? _panAt;
 
   @override
   void initState() {
@@ -88,14 +99,33 @@ class _MatchScreenState extends State<MatchScreen> with SingleTickerProviderStat
                 fit: StackFit.expand,
                 children: [
                   GestureDetector(
-                    onPanStart: (_) => _drag = Offset.zero,
+                    onPanStart: (_) {
+                      _drag = Offset.zero;
+                      _panAt = DateTime.now();
+                    },
                     onPanUpdate: (details) => _drag += details.delta,
                     onPanEnd: (details) {
                       final velocity = details.velocity.pixelsPerSecond;
                       final sample = velocity.distance > 40 ? velocity : _drag;
                       if (sample.distance < 8) return;
                       final speed = (sample.distance / 2000).clamp(0.0, 1.0);
-                      widget.onSwipe(const Vec2(0.5, 0.92), Vec2(sample.dx, -sample.dy), speed);
+                      final local = Vec2(sample.dx, -sample.dy);
+                      final started = _panAt;
+                      final durationMs = started == null ? 0.0 : DateTime.now().difference(started).inMilliseconds.toDouble();
+                      widget.onSwipe(const Vec2(0.5, 0.92), local, speed);
+                      final report = widget.onAim;
+                      if (report == null) return;
+                      final match = widget.match;
+                      final seat = widget.seat;
+                      report(assessThrow(
+                        local: local,
+                        speed: speed,
+                        lengthPx: _drag.distance,
+                        durationMs: durationMs,
+                        me: match.poseFor(seat),
+                        them: match.poseFor(otherSeat(seat)),
+                        aim: match.aim,
+                      ));
                     },
                     child: AnimatedBuilder(
                       animation: _impact,
