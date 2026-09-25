@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
 
+import '../telemetry/crash_reporting.dart';
+import '../telemetry/game_watch.dart';
 import 'pipe.dart';
 import 'tcp_pipe.dart';
 
@@ -66,7 +68,9 @@ class BleSession {
         if (event.characteristic.uuid != intentId) return;
         try {
           await _peripheral.respondWriteRequest(event.request);
-        } catch (_) {}
+        } catch (error, stack) {
+          unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 5}));
+        }
         if (_role == _Role.guest) return;
         _lockHost(event.central, snapshot).add(event.request.value);
       }),
@@ -82,7 +86,9 @@ class BleSession {
       _peripheral.characteristicReadRequested.listen((event) async {
         try {
           await _peripheral.respondReadRequestWithValue(event.request, value: Uint8List(1));
-        } catch (_) {}
+        } catch (error, stack) {
+          unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 8}));
+        }
       }),
     );
     _subs.add(
@@ -105,7 +111,9 @@ class BleSession {
     await _central.stopDiscovery();
     try {
       await _peripheral.stopAdvertising();
-    } catch (_) {}
+    } catch (error, stack) {
+      unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 7}));
+    }
     await _central.connect(peer);
     final services = await _central.discoverGATT(peer);
     GATTCharacteristic? intent;
@@ -118,6 +126,7 @@ class BleSession {
     }
     if (intent == null || snapshot == null) {
       onError?.call('That phone is not hosting Sandfight.');
+      unawaited(CrashReportingService.instance.failure(GameSignal.sessionError, {'code': 2}));
       _role = _Role.open;
       return;
     }
@@ -134,10 +143,14 @@ class BleSession {
     _subs.clear();
     try {
       await _central.stopDiscovery();
-    } catch (_) {}
+    } catch (error, stack) {
+      unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 6}));
+    }
     try {
       await _peripheral.stopAdvertising();
-    } catch (_) {}
+    } catch (error, stack) {
+      unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 7}));
+    }
   }
 
   _HostPipe? _hostPipe;
@@ -171,10 +184,13 @@ class BleSession {
     switch (state) {
       case BluetoothLowEnergyState.poweredOff:
         onError?.call('Turn Bluetooth on.');
+        unawaited(CrashReportingService.instance.failure(GameSignal.permissionDenied, {'state': 4}));
       case BluetoothLowEnergyState.unauthorized:
         onError?.call('Allow Bluetooth for Sandfight.');
+        unawaited(CrashReportingService.instance.failure(GameSignal.permissionDenied, {'state': 2}));
       case BluetoothLowEnergyState.unsupported:
         onError?.call('This phone has no Bluetooth.');
+        unawaited(CrashReportingService.instance.failure(GameSignal.permissionDenied, {'state': 1}));
       case BluetoothLowEnergyState.unknown:
       case BluetoothLowEnergyState.poweredOn:
         break;
@@ -220,7 +236,9 @@ class _HostPipe implements BytePipe {
     try {
       final max = await _peripheral.getMaximumNotifyLength(_central);
       if (max >= 20) _chunk = max;
-    } catch (_) {}
+    } catch (error, stack) {
+      unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 9}));
+    }
     final framed = framePayload(payload);
     for (var i = 0; i < framed.length; i += _chunk) {
       final end = math.min(i + _chunk, framed.length);
@@ -269,7 +287,9 @@ class _GuestPipe implements BytePipe {
     try {
       final max = await _central.getMaximumWriteLength(_peripheral, type: GATTCharacteristicWriteType.withResponse);
       if (max >= 20) _chunk = max;
-    } catch (_) {}
+    } catch (error, stack) {
+      unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 10}));
+    }
     final framed = framePayload(payload);
     for (var i = 0; i < framed.length; i += _chunk) {
       final end = math.min(i + _chunk, framed.length);

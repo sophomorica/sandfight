@@ -17,6 +17,8 @@ import 'net/ble_session.dart';
 import 'net/session.dart';
 import 'net/tcp_pipe.dart';
 import 'net/uwb_pose.dart';
+import 'telemetry/crash_reporting.dart';
+import 'telemetry/game_watch.dart';
 import 'theme/palette.dart';
 
 const _roleName = String.fromEnvironment('ROLE');
@@ -47,6 +49,10 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
   bool _allowed = true;
   late final Ticker _ticker = createTicker(_onTick);
   Duration _last = Duration.zero;
+  MatchSample? _sample;
+  var _peerCount = 0;
+  AppScreen? _seenScreen;
+  int? _capability;
 
   @override
   void initState() {
@@ -54,6 +60,7 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     _loadWinner();
     if (widget.machine != null) {
       _allowed = meetsIphone12(widget.machine!);
+      _noteCapability();
     } else {
       _checkFloor();
     }
@@ -64,6 +71,7 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     super.didUpdateWidget(oldWidget);
     if (widget.machine != oldWidget.machine && widget.machine != null) {
       _allowed = meetsIphone12(widget.machine!);
+      _noteCapability();
     }
   }
 
@@ -71,6 +79,7 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     final machine = widget.machine ?? await HapticPlayer.machine();
     if (!mounted) return;
     setState(() => _allowed = meetsIphone12(machine));
+    _noteCapability();
   }
 
   Future<void> _loadWinner() async {
@@ -78,7 +87,9 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
       final prefs = await SharedPreferences.getInstance();
       if (!mounted) return;
       setState(() => _lastWinner = prefs.getString('lastWinner'));
-    } catch (_) {}
+    } catch (error, stack) {
+      unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 1}));
+    }
   }
 
   @override
@@ -106,6 +117,7 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
       drive.tick(ms, pose: pose, uwb: UwbPose.supported);
     }
     _advanceScreen();
+    _noteMatch();
     if (mounted) setState(() {});
   }
 
@@ -178,8 +190,9 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
         }
         _use(HostDrive(pipe, uwb: true));
         _showMatch();
-      } catch (error) {
+      } catch (error, stack) {
         if (_stale(epoch)) return;
+        unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 2}));
         setState(() => _error = 'No guest sim joined. $error');
       }
       return;
@@ -193,8 +206,9 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
         }
         _use(GuestDrive(pipe));
         _showMatch();
-      } catch (error) {
+      } catch (error, stack) {
         if (_stale(epoch)) return;
+        unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 3}));
         setState(() => _error = 'Start the host sim first. $error');
       }
       return;
@@ -203,6 +217,7 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     _ble = ble;
     ble.onPeers = (peers) {
       if (_stale(epoch)) return;
+      _notePeers(peers.length);
       setState(() => _peers..clear()..addAll(peers));
     };
     ble.onError = (message) {
@@ -218,8 +233,9 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     };
     try {
       await ble.start();
-    } catch (error) {
+    } catch (error, stack) {
       if (_stale(epoch)) return;
+      unawaited(CrashReportingService.instance.handled(error, stack, GameSignal.sessionError, {'code': 4}));
       setState(() => _error = 'Bluetooth did not start. $error');
     }
   }
@@ -300,6 +316,7 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     _last = Duration.zero;
     if (!_ticker.isActive) _ticker.start();
     setState(() => _screen = _Screen.match);
+    _noteMatch();
   }
 
   Future<void> _leave() async {
@@ -312,6 +329,8 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     await _gyro?.cancel();
     _gyro = null;
     _ticker.stop();
+    _sample = null;
+    _peerCount = 0;
     if (!mounted) return;
     setState(() {
       _screen = _Screen.home;
@@ -328,12 +347,65 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     if (drive is GuestDrive) await drive.close();
   }
 
+  void _noteCapability() {
+    final allowed = _allowed ? 1 : 0;
+    if (_capability == allowed) return;
+    _capability = allowed;
+    CrashReportingService.instance.capability(allowed);
+  }
+
+  void _markScreen() {
+    final next = !_allowed
+        ? AppScreen.blocked
+        : switch (_screen) {
+            _Screen.home => AppScreen.home,
+            _Screen.search => AppScreen.search,
+            _Screen.match => AppScreen.match,
+            _Screen.result => AppScreen.result,
+          };
+    if (_seenScreen == next) return;
+    _seenScreen = next;
+    CrashReportingService.instance.screen(next);
+  }
+
+  void _notePeers(int count) {
+    final crumbs = watchPeers(_peerCount, count);
+    _peerCount = count;
+    final report = CrashReportingService.instance;
+    for (final crumb in crumbs) {
+      if (crumb.signal == GameSignal.peerLost && crumb.data['count'] == 0) {
+        unawaited(report.failure(crumb.signal, crumb.data));
+      } else {
+        report.game(crumb.signal, crumb.data);
+      }
+    }
+  }
+
+  void _noteMatch() {
+    final match = _match;
+    if (match == null) return;
+    final next = sampleMatch(match, players: _drive is LocalDrive ? 1 : 2, uwbSupported: UwbPose.supported ? 1 : 0);
+    final crumbs = watchMatch(_sample, next);
+    _sample = next;
+    final report = CrashReportingService.instance;
+    for (final crumb in crumbs) {
+      if (crumb.signal == GameSignal.peerLost) {
+        unawaited(report.failure(crumb.signal, crumb.data));
+      } else {
+        report.game(crumb.signal, crumb.data);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    _markScreen();
+    final observers = CrashReportingService.instance.navigatorObservers;
     if (!_allowed) {
-      return const MaterialApp(
+      return MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: Scaffold(
+        navigatorObservers: observers,
+        home: const Scaffold(
           backgroundColor: Palette.pit,
           body: Center(
             child: Padding(
@@ -364,6 +436,7 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     };
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorObservers: observers,
       theme: ThemeData(brightness: Brightness.dark, scaffoldBackgroundColor: Palette.pit),
       home: body,
     );

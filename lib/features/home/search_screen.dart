@@ -81,6 +81,7 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                             color: const Color(0xFF2A241E),
                             borderRadius: BorderRadius.circular(14),
                             child: InkWell(
+                              key: ValueKey('nearby-peer-$index'),
                               borderRadius: BorderRadius.circular(14),
                               onTap: () => widget.onJoin(peer.id),
                               child: Padding(
@@ -100,7 +101,11 @@ class _SearchScreenState extends State<SearchScreen> with SingleTickerProviderSt
                         },
                       ),
               ),
-              TextButton(onPressed: widget.onLeave, child: const Text('Leave', style: TextStyle(color: Palette.beige))),
+              TextButton(
+                key: const ValueKey('search-leave'),
+                onPressed: widget.onLeave,
+                child: const Text('Leave', style: TextStyle(color: Palette.beige)),
+              ),
             ],
           ),
         ),

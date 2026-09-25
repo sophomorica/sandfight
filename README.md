@@ -45,6 +45,16 @@ Phones in this build aim with the on-screen edge glow. Flick within about 25° o
 
 iPhone 11 and older stop on a screen that asks for an iPhone 12 or newer. Apple does not publish an A14-only device capability, so the check reads the hardware id at launch.
 
+## Build 3
+
+`pubspec.yaml` is `1.0.0+3`. Put `SENTRY_DSN=...` in a gitignored `.env` at the repo root, then run:
+
+```bash
+scripts/build_ios_release.sh
+```
+
+The script passes `APP_RELEASE=sandfight@<pubspec version>` and does not set `FAKE_UWB`. If `SENTRY_DSN` is missing it warns and still builds. That build sends nothing.
+
 ## Tests
 
 ```bash
