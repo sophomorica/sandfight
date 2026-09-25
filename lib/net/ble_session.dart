@@ -126,7 +126,7 @@ class BleSession {
     }
     if (intent == null || snapshot == null) {
       onError?.call('That phone is not hosting Sandfight.');
-      unawaited(CrashReportingService.instance.failure(GameSignal.sessionError, {'code': 2}));
+      unawaited(CrashReportingService.instance.failure(GameSignal.sessionError, {'code': 11}));
       _role = _Role.open;
       return;
     }
