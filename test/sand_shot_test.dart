@@ -35,7 +35,6 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final out = Directory('artifacts/sand')..createSync(recursive: true);
-    Directory('/opt/cursor/artifacts/sand').createSync(recursive: true);
 
     await _shoot(tester, out, 'up-30', 30, durationMs: 520);
     await _shoot(tester, out, 'up-0', 0, durationMs: 520);
@@ -87,7 +86,10 @@ Future<void> _shoot(
     expect(tester.widget<Text>(find.byKey(const Key('aim-hud'))).textSpan!.toPlainText(), contains('pt/s'));
   }
   File('${out.path}/$name.png').writeAsBytesSync(frame.png);
-  File('/opt/cursor/artifacts/sand/$name.png').writeAsBytesSync(frame.png);
+  final mirror = File('/opt/cursor/artifacts/sand/$name.png');
+  if (mirror.parent.existsSync()) {
+    mirror.writeAsBytesSync(frame.png);
+  }
   // ignore: avoid_print
   print('RASTER $name ${frame.ms} ms ${frame.png.length} bytes');
   if (name == 'up-0') {
