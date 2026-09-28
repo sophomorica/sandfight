@@ -9,6 +9,8 @@ Bundle id: `com.narrowroad.sandfight`.
 ## One sim, silent opponent
 
 ```bash
+git clone https://github.com/sophomorica/sandfight
+cd sandfight
 flutter pub get
 flutter run --dart-define=FAKE_UWB=true
 ```

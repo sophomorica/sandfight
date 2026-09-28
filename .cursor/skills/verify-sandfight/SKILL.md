@@ -9,7 +9,7 @@ Sandfight is an iOS Flutter app. The surface an agent can drive here is the widg
 
 ## Launch
 
-There is no server. From the repo root, with Flutter on `PATH`:
+Clone https://github.com/sophomorica/sandfight. There is no server. From that repo root, with Flutter on `PATH`:
 
 ```bash
 flutter pub get
