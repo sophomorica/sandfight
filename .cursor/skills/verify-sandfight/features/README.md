@@ -4,7 +4,7 @@ This directory is the maintained source for verifying Sandfight's user-facing be
 
 ## Baseline preconditions
 
-- Run from the repo root with Flutter on `PATH`.
+- Clone https://github.com/sophomorica/sandfight and run from that repo root with Flutter on `PATH`.
 - `flutter analyze` prints `No issues found!`.
 - Do not start a second `flutter test` against the same checkout while one is compiling. They share `build/`.
 - The match drive uses `LocalDrive` inside the test. It does not need Bluetooth, a second phone, or `FAKE_UWB`.
