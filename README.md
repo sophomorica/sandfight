@@ -45,11 +45,32 @@ Phones in this build aim with the on-screen edge glow. Flick within about 25° o
 
 iPhone 11 and older stop on a screen that asks for an iPhone 12 or newer. Apple does not publish an A14-only device capability, so the check reads the hardware id at launch.
 
+## Build 3
+
+`pubspec.yaml` is `1.0.0+3`. Put `SENTRY_DSN=...` in a gitignored `.env` at the repo root, then run:
+
+```bash
+scripts/build_ios_release.sh
+```
+
+The script passes `APP_RELEASE=sandfight@<pubspec version>` and does not set `FAKE_UWB`. If `SENTRY_DSN` is missing it warns and still builds. That build sends nothing.
+
+## Sand in a match
+
+The bed is a heightfield. Each raw pointer sample carves it. A fragment shader lights the field with a low upper-left sun, soft shadow, grain, and ambient occlusion. The picture redraws when the sand changes.
+
+The throw that moves mass is still the pan-end velocity. The carve and the throw can disagree. That split is listed in `UX_QUESTIONS.md` under Needs Patrick. Rake, Smooth, and Reset are not in the match.
+
+`shaders/sand.frag` is declared under `flutter: shaders` in `pubspec.yaml`.
+
 ## Tests
 
 ```bash
+flutter analyze
 flutter test
 ```
+
+`test/sand_bed_test.dart` locks the zen hash, the upward carve at 30°, 0°, and −30°, and the fast-flick depth. `test/sand_shot_test.dart` writes match screenshots to `artifacts/sand/`. Those shots are the software raster, not a phone GPU.
 
 The suite covers a flick toward the guest, a miss that returns, truck hit and miss, a dead link that pauses and then ends, fallback aim when UWB is absent, heading that turns with the phone, and the haptic cues. Haptic cues are data on the match. On an iPhone they play through `UIImpactFeedbackGenerator`. A fuller pile is a harder pulse. A loss is three pulses that get softer. The simulator does not have that generator, so a sim falls back to Flutter's coarser taps.
 

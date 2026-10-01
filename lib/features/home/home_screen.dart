@@ -32,6 +32,7 @@ class HomeScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 64,
                 child: FilledButton(
+                  key: const ValueKey('find-nearby'),
                   style: FilledButton.styleFrom(
                     backgroundColor: Palette.beige,
                     foregroundColor: Palette.pit,
