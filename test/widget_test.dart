@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sandfight/app.dart';
@@ -40,6 +42,24 @@ void main() {
     expect(tester.widget<Text>(find.byKey(const Key('my-mass'))).data, '88');
     expect(tester.widget<Text>(find.byKey(const Key('their-mass'))).data, '112');
     expect(drive.match.conserved, 200);
+  });
+
+  testWidgets('a non-primary flick still moves 12 mass', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final drive = LocalDrive();
+    await tester.pumpWidget(MaterialApp(home: _Harness(drive: drive)));
+    await tester.pump();
+    final field = tester.getRect(find.byType(SandField));
+    final start = field.center;
+    final gesture = await tester.startGesture(start, kind: PointerDeviceKind.touch, buttons: kSecondaryButton);
+    await gesture.moveBy(const Offset(0, -420), timeStamp: const Duration(milliseconds: 30));
+    await gesture.up(timeStamp: const Duration(milliseconds: 40));
+    await tester.pump();
+    expect(tester.widget<Text>(find.byKey(const Key('my-mass'))).data, '88');
+    expect(tester.widget<Text>(find.byKey(const Key('their-mass'))).data, '112');
+    expect(drive.match.conserved, 200);
+    debugDefaultTargetPlatformOverride = null;
   });
 }
 
