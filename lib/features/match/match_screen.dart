@@ -13,6 +13,7 @@ import '../../render/sand_bed.dart';
 import '../../render/sand_field.dart';
 import '../../render/truck_sprite.dart';
 import '../../telemetry/aim_log.dart';
+import '../../telemetry/device_log.dart';
 import '../../theme/palette.dart';
 
 class MatchScreen extends StatefulWidget {
@@ -182,9 +183,12 @@ class _MatchScreenState extends State<MatchScreen> {
     _summaryTimer?.cancel();
     _summary = null;
     bed.down(event.pointer, event.localPosition.dx, event.localPosition.dy, _ms(event));
-    _track ??= _ThrowTrack(event.pointer);
-    if (_track!.pointer == event.pointer) _track!.add(event.position, event.timeStamp);
     _scheduleFrame();
+    final fresh = _track == null;
+    _track ??= _ThrowTrack(event.pointer);
+    if (_track!.pointer != event.pointer) return;
+    if (fresh) unawaited(DeviceLog.instance.input());
+    _track!.add(event.position, event.timeStamp);
   }
 
   void _move(PointerMoveEvent event) {
@@ -215,6 +219,7 @@ class _MatchScreenState extends State<MatchScreen> {
     if (sample.distance < 8) return;
     final speed = (sample.distance / 2000).clamp(0.0, 1.0);
     final local = Vec2(sample.dx, -sample.dy);
+    unawaited(DeviceLog.instance.threw());
     widget.onSwipe(const Vec2(0.5, 0.92), local, speed);
     final report = widget.onAim;
     if (report == null) return;

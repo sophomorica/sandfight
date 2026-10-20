@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'aim_log.dart';
+import 'device_log.dart';
 import 'game_watch.dart';
 
 enum AppScreen { home, search, match, result, blocked }
@@ -99,6 +100,7 @@ class CrashReportingService {
   }
 
   Future<void> handled(Object error, StackTrace stack, GameSignal signal, [Map<String, num> data = const {}]) async {
+    unawaited(DeviceLog.instance.fault(error, stack));
     _breadcrumb(signal, data, message: signal.name);
     if (!enabled) return;
     attempts += 1;
