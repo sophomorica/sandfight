@@ -372,8 +372,9 @@ class _SandfightAppState extends State<SandfightApp>
   void _detach() {
     final drive = _drive;
     final listener = _onDrive;
-    if (drive is ChangeNotifier && listener != null)
+    if (drive is ChangeNotifier && listener != null) {
       drive.removeListener(listener);
+    }
     _onDrive = null;
   }
 
@@ -468,8 +469,9 @@ class _SandfightAppState extends State<SandfightApp>
 
   Future<void> _closeDrive(Object? drive) async {
     final listener = _onDrive;
-    if (drive is ChangeNotifier && listener != null)
+    if (drive is ChangeNotifier && listener != null) {
       drive.removeListener(listener);
+    }
     _onDrive = null;
     if (drive is LocalDrive) await drive.close();
     if (drive is HostDrive) await drive.close();
@@ -526,8 +528,9 @@ class _SandfightAppState extends State<SandfightApp>
     var roundEnded = false;
     var lengthMs = 0;
     for (final crumb in crumbs) {
-      if (crumb.signal == GameSignal.roundStart)
+      if (crumb.signal == GameSignal.roundStart) {
         unawaited(DeviceLog.instance.roundStarted());
+      }
       if (crumb.signal == GameSignal.roundEnd) {
         roundEnded = true;
         lengthMs = crumb.data['t_ms']?.toInt() ?? next.tMs;
