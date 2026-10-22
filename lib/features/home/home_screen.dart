@@ -80,6 +80,24 @@ class _VersionLabel extends StatefulWidget {
 class _VersionLabelState extends State<_VersionLabel> {
   int _taps = 0;
   DateTime? _window;
+  String _label = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final label = await bundleVersion();
+      if (!mounted) return;
+      setState(() => _label = label);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _label = '');
+    }
+  }
 
   void _open() {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DevScreen()));
@@ -104,7 +122,11 @@ class _VersionLabelState extends State<_VersionLabel> {
     return GestureDetector(
       onTap: _tap,
       onLongPress: _open,
-      child: const Text(appRelease, key: Key('version-label'), style: TextStyle(color: Palette.dust, fontSize: 13)),
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 18),
+        child: Text(_label, key: const Key('version-label'), style: const TextStyle(color: Palette.dust, fontSize: 13)),
+      ),
     );
   }
 }

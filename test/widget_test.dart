@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sandfight/app.dart';
 import 'package:sandfight/features/home/home_screen.dart';
 import 'package:sandfight/features/match/match_screen.dart';
@@ -10,6 +11,16 @@ import 'package:sandfight/render/sand_field.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    PackageInfo.setMockInitialValues(
+      appName: 'Sandfight',
+      packageName: 'com.narrowroad.sandfight',
+      version: '9.8.7',
+      buildNumber: '42',
+      buildSignature: 'test',
+    );
+  });
+
   testWidgets('home shows find nearby and the last bury', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -21,6 +32,9 @@ void main() {
     expect(find.text('Flick sand toward the other phone.'), findsOneWidget);
     expect(find.text('Empty your pile to bury them.'), findsOneWidget);
     expect(find.text('Last bury: P2'), findsOneWidget);
+    await tester.pump();
+    expect(find.text('9.8.7 (42)'), findsOneWidget);
+    expect(find.text('1.0.0+4'), findsNothing);
   });
 
   testWidgets('iPhone 11 is refused and iPhone 12 reaches home', (tester) async {
