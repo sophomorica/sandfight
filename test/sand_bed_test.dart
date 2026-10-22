@@ -74,6 +74,41 @@ void main() {
     expect(slow, lessThan(fast - 0.3));
   });
 
+  test('reset puts the fresh garden back', () {
+    final bed = SandBed.fit(120, 180, simScale: 1);
+    play(bed, line(60, 140, 0, 80, 400, 16));
+    final i = 100 * bed.cols + 60;
+    expect(bed.at(60, 100), lessThan(bed.fresh[i] - 0.2));
+    bed.resetGarden();
+    expect(bed.at(60, 100), closeTo(bed.fresh[i], 1e-6));
+    expect(bed.samples, isEmpty);
+  });
+
+  test('smooth raises a trench', () {
+    final bed = SandBed.fit(80, 160, simScale: 1);
+    play(bed, line(40, 130, 0, 80, 600, 20));
+    final cells = _carved(bed, 0.45);
+    expect(cells, isNotEmpty);
+    final before = [for (final cell in cells) bed.at(cell.x, cell.y)];
+    bed.smoothGarden();
+    var rose = 0.0;
+    for (var i = 0; i < cells.length; i++) {
+      rose += bed.at(cells[i].x, cells[i].y) - before[i];
+    }
+    expect(rose / cells.length, greaterThan(0.05));
+  });
+
+  test('a rake cuts wider than a finger', () {
+    final finger = SandBed.fit(180, 80, simScale: 1);
+    final rake = SandBed.fit(180, 80, simScale: 1)..rake = true;
+    final stroke = line(20, 40, 90, 140, 500, 24);
+    play(finger, stroke);
+    play(rake, stroke);
+    final fingerSpan = _spanY(_carved(finger, 0.4));
+    final rakeSpan = _spanY(_carved(rake, 0.4));
+    expect(rakeSpan, greaterThan(fingerSpan + 16));
+  });
+
   test('slump keeps the sand it moves', () {
     final bed = SandBed.fit(48, 48, simScale: 1);
     final before = bed.height.fold<double>(0, (sum, value) => sum + value);
@@ -168,6 +203,11 @@ List<({int x, int y})> _carved(SandBed bed, double belowFresh) {
     }
   }
   return found;
+}
+
+int _spanY(List<({int x, int y})> cells) {
+  final ys = cells.map((cell) => cell.y);
+  return ys.reduce(math.max) - ys.reduce(math.min);
 }
 
 double _distanceToSegment(double px, double py, double ax, double ay, double bx, double by) {

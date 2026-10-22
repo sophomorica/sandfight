@@ -13,10 +13,30 @@ class SandStage extends StatefulWidget {
   final void Function(List<DrawPoint> points)? onStroke;
 
   @override
-  State<SandStage> createState() => _SandStageState();
+  State<SandStage> createState() => SandStageState();
 }
 
-class _SandStageState extends State<SandStage> {
+class SandStageState extends State<SandStage> {
+  void setRake(bool value) {
+    _bed?.rake = value;
+  }
+
+  void smooth() {
+    final bed = _bed;
+    if (bed == null) return;
+    bed.smoothGarden();
+    setState(() {});
+    _upload();
+  }
+
+  void resetGarden() {
+    final bed = _bed;
+    if (bed == null) return;
+    bed.resetGarden();
+    setState(() {});
+    _upload();
+  }
+
   SandBed? _bed;
   ui.FragmentProgram? _program;
   ui.FragmentShader? _shader;

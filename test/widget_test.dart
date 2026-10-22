@@ -80,14 +80,21 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
-  testWidgets('free play shows the sand bed and no pile mass', (tester) async {
+  testWidgets('free play offers the garden tools and no race', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const SandfightApp(machine: 'iPhone13,2'));
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('free-play')));
     await tester.pump();
     expect(find.byType(SandField), findsOneWidget);
+    expect(find.byKey(const ValueKey('garden-rake')), findsOneWidget);
+    expect(find.byKey(const ValueKey('garden-smooth')), findsOneWidget);
+    expect(find.byKey(const ValueKey('garden-reset')), findsOneWidget);
+    expect(find.text('circle'), findsNothing);
+    expect(find.text('Ahead'), findsNothing);
+    expect(find.textContaining(RegExp(r'\d+\.\d+s')), findsNothing);
     expect(find.byKey(const Key('my-mass')), findsNothing);
+    expect(find.byKey(const Key('their-mass')), findsNothing);
   });
 
   testWidgets('a solo draw race names the glyph and hides pile mass', (tester) async {
@@ -98,6 +105,7 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('circle'), findsOneWidget);
+    expect(find.byKey(const ValueKey('garden-rake')), findsNothing);
     expect(find.byKey(const Key('my-mass')), findsNothing);
   });
 
