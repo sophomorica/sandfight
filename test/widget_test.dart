@@ -24,7 +24,7 @@ void main() {
   testWidgets('home shows find nearby and the last bury', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: HomeScreen(onFind: () {}, lastWinner: 'P2'),
+        home: HomeScreen(onFind: () {}, onCarve: () {}, onRace: () {}, lastWinner: 'P2'),
       ),
     );
     expect(find.text('Find nearby players'), findsOneWidget);
@@ -32,6 +32,8 @@ void main() {
     expect(find.text('Flick sand toward the other phone.'), findsOneWidget);
     expect(find.text('Empty your pile to bury them.'), findsOneWidget);
     expect(find.text('Last bury: P2'), findsOneWidget);
+    expect(find.text('Free play'), findsOneWidget);
+    expect(find.text('Draw race'), findsOneWidget);
     await tester.pump();
     expect(find.text('9.8.7 (42)'), findsOneWidget);
     expect(find.text('1.0.0+4'), findsNothing);
@@ -74,6 +76,27 @@ void main() {
     expect(tester.widget<Text>(find.byKey(const Key('their-mass'))).data, '112');
     expect(drive.match.conserved, 200);
     debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('free play shows the sand bed and no pile mass', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const SandfightApp(machine: 'iPhone13,2'));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('free-play')));
+    await tester.pump();
+    expect(find.byType(SandField), findsOneWidget);
+    expect(find.byKey(const Key('my-mass')), findsNothing);
+  });
+
+  testWidgets('a solo draw race names the glyph and hides pile mass', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const SandfightApp(machine: 'iPhone13,2', fakeUwb: true));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('draw-race')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('circle'), findsOneWidget);
+    expect(find.byKey(const Key('my-mass')), findsNothing);
   });
 }
 

@@ -44,7 +44,7 @@ void main() {
   testWidgets('a long press on the version opens the device log', (tester) async {
     await DeviceLog.instance.session();
     await DeviceLog.instance.fault(StateError('radio'), StackTrace.empty);
-    await tester.pumpWidget(MaterialApp(home: HomeScreen(onFind: () {}, lastWinner: null)));
+    await tester.pumpWidget(MaterialApp(home: HomeScreen(onFind: () {}, onCarve: () {}, onRace: () {}, lastWinner: null)));
     expect(find.byKey(const Key('version-label')), findsOneWidget);
     await tester.pump();
     expect(tester.widget<Text>(find.byKey(const Key('version-label'))).data, '9.8.7 (42)');
@@ -58,7 +58,7 @@ void main() {
   });
 
   testWidgets('five taps on the version open the device log', (tester) async {
-    await tester.pumpWidget(MaterialApp(home: HomeScreen(onFind: () {}, lastWinner: null)));
+    await tester.pumpWidget(MaterialApp(home: HomeScreen(onFind: () {}, onCarve: () {}, onRace: () {}, lastWinner: null)));
     await tester.pump();
     final label = find.byKey(const Key('version-label'));
     for (var i = 0; i < 5; i++) {

@@ -5,9 +5,11 @@ import '../../theme/palette.dart';
 import 'dev_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.onFind, required this.lastWinner});
+  const HomeScreen({super.key, required this.onFind, required this.onCarve, required this.onRace, required this.lastWinner});
 
   final VoidCallback onFind;
+  final VoidCallback onCarve;
+  final VoidCallback onRace;
   final String? lastWinner;
 
   @override
@@ -43,6 +45,36 @@ class HomeScreen extends StatelessWidget {
                   onPressed: onFind,
                   child: const Text('Find nearby players'),
                 ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      key: const ValueKey('free-play'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Palette.ink,
+                        side: const BorderSide(color: Palette.metal),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      onPressed: onCarve,
+                      child: const Text('Free play'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      key: const ValueKey('draw-race'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Palette.ink,
+                        side: const BorderSide(color: Palette.metal),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      onPressed: onRace,
+                      child: const Text('Draw race'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 28),
               const Text('How to play', style: TextStyle(color: Palette.dust, fontSize: 14)),
