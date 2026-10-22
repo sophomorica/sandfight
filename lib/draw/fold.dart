@@ -154,7 +154,6 @@ _Decision _compare(_Mark local, _Mark remote) {
 }
 
 _Mark _ghostAnswer(_Mark local) {
-  // A miss still loses. The ghost is a scored 8000 ms mark either way.
   return _Scored(local.glyph, _ghostPaceMs);
 }
 

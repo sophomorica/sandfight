@@ -19,7 +19,6 @@ enum Glyph {
 
   const Glyph(this.id);
 
-  /// Stable on the wire, so a new glyph does not renumber the others.
   final int id;
 
   static Glyph? byId(int id) {
@@ -68,7 +67,6 @@ abstract interface class RaceSeat {
 
   ClockFace get clock;
 
-  /// Null until this phone has a result to paint.
   Place? get showing;
 
   /// Reduces a copy and returns the posted seat. The receiver stays as it was.

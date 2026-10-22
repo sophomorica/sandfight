@@ -71,7 +71,6 @@ class SandfightApp extends StatefulWidget {
 
   final String? machine;
 
-  /// Null uses the compile-time UWB stand-in. Tests pass true to open a solo race.
   final bool? fakeUwb;
 
   @override
