@@ -118,17 +118,14 @@ class _GlyphOutline extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..color = Palette.beige.withValues(alpha: 0.28);
+      ..strokeWidth = 3
+      ..color = Palette.ink.withValues(alpha: 0.72);
     switch (glyph) {
       case Glyph.circle:
         canvas.drawCircle(center, side / 2, paint);
       case Glyph.square:
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromCenter(center: center, width: side, height: side),
-            const Radius.circular(8),
-          ),
+        canvas.drawRect(
+          Rect.fromCenter(center: center, width: side, height: side),
           paint,
         );
       case Glyph.triangle:

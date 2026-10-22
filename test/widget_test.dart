@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -96,6 +98,28 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('circle'), findsOneWidget);
+    expect(find.byKey(const Key('my-mass')), findsNothing);
+  });
+
+  testWidgets('a circle on the solo race finishes ahead of the ghost', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const SandfightApp(machine: 'iPhone13,2', fakeUwb: true));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('draw-race')));
+    await tester.pump();
+    await tester.pump();
+    final field = tester.getRect(find.byType(SandField));
+    final center = field.center;
+    const radius = 90.0;
+    final gesture = await tester.startGesture(center + const Offset(radius, 0));
+    const steps = 72;
+    for (var i = 1; i <= steps; i++) {
+      final angle = 2 * math.pi * i / steps;
+      await gesture.moveTo(center + Offset(radius * math.cos(angle), radius * math.sin(angle)));
+    }
+    await gesture.up();
+    await tester.pump();
+    expect(find.text('Ahead'), findsOneWidget);
     expect(find.byKey(const Key('my-mass')), findsNothing);
   });
 }
