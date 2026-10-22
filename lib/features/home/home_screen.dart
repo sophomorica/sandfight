@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../build_info.dart';
 import '../../theme/palette.dart';
+import 'dev_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.onFind, required this.lastWinner});
@@ -58,10 +60,51 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 18),
                 Text('Last bury: $lastWinner', style: const TextStyle(color: Palette.glow, fontSize: 16)),
               ],
+              const SizedBox(height: 18),
+              const _VersionLabel(),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _VersionLabel extends StatefulWidget {
+  const _VersionLabel();
+
+  @override
+  State<_VersionLabel> createState() => _VersionLabelState();
+}
+
+class _VersionLabelState extends State<_VersionLabel> {
+  int _taps = 0;
+  DateTime? _window;
+
+  void _open() {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DevScreen()));
+  }
+
+  void _tap() {
+    final now = DateTime.now();
+    if (_window == null || now.difference(_window!) > const Duration(seconds: 2)) {
+      _window = now;
+      _taps = 1;
+      return;
+    }
+    _taps += 1;
+    if (_taps < 5) return;
+    _taps = 0;
+    _window = null;
+    _open();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _tap,
+      onLongPress: _open,
+      child: const Text(appRelease, key: Key('version-label'), style: TextStyle(color: Palette.dust, fontSize: 13)),
     );
   }
 }

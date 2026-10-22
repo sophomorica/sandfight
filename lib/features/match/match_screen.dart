@@ -13,6 +13,7 @@ import '../../render/sand_bed.dart';
 import '../../render/sand_field.dart';
 import '../../render/truck_sprite.dart';
 import '../../telemetry/aim_log.dart';
+import '../../telemetry/device_log.dart';
 import '../../theme/palette.dart';
 
 class MatchScreen extends StatefulWidget {
@@ -40,8 +41,6 @@ class MatchScreen extends StatefulWidget {
 class _MatchScreenState extends State<MatchScreen> {
   int _seenImpact = 0;
   int _played = 0;
-  Offset _drag = Offset.zero;
-  DateTime? _panAt;
   SandBed? _bed;
   ui.FragmentProgram? _program;
   ui.FragmentShader? _shader;
@@ -53,6 +52,7 @@ class _MatchScreenState extends State<MatchScreen> {
   AimReadout? _summary;
   Timer? _summaryTimer;
   bool _frameQueued = false;
+  _ThrowTrack? _track;
 
   @override
   void initState() {
@@ -184,18 +184,59 @@ class _MatchScreenState extends State<MatchScreen> {
     _summary = null;
     bed.down(event.pointer, event.localPosition.dx, event.localPosition.dy, _ms(event));
     _scheduleFrame();
+    final fresh = _track == null;
+    _track ??= _ThrowTrack(event.pointer);
+    if (_track!.pointer != event.pointer) return;
+    if (fresh) unawaited(DeviceLog.instance.input());
+    _track!.add(event.position, event.timeStamp);
   }
 
   void _move(PointerMoveEvent event) {
     final bed = _bed;
     if (bed == null) return;
     bed.move(event.pointer, event.localPosition.dx, event.localPosition.dy, _ms(event));
+    if (_track?.pointer == event.pointer) _track!.add(event.position, event.timeStamp);
     _scheduleFrame();
   }
 
-  void _up(PointerUpEvent event) => _endPointer(event.pointer, event.localPosition, _ms(event));
+  void _up(PointerUpEvent event) {
+    _endPointer(event.pointer, event.localPosition, _ms(event));
+    _finishThrow(event.pointer, event.position, event.timeStamp);
+  }
 
-  void _cancel(PointerCancelEvent event) => _endPointer(event.pointer, event.localPosition, _ms(event));
+  void _cancel(PointerCancelEvent event) {
+    _endPointer(event.pointer, event.localPosition, _ms(event));
+    _finishThrow(event.pointer, event.position, event.timeStamp);
+  }
+
+  void _finishThrow(int pointer, Offset position, Duration time) {
+    final track = _track;
+    if (track == null || track.pointer != pointer) return;
+    _track = null;
+    track.add(position, time);
+    final velocity = track.velocity;
+    final sample = velocity.distance > 40 ? velocity : track.drag;
+    if (sample.distance < 8) return;
+    final speed = (sample.distance / 2000).clamp(0.0, 1.0);
+    final local = Vec2(sample.dx, -sample.dy);
+    unawaited(DeviceLog.instance.threw());
+    widget.onSwipe(const Vec2(0.5, 0.92), local, speed);
+    final report = widget.onAim;
+    if (report == null) return;
+    final current = widget.match;
+    final who = widget.seat;
+    report(
+      assessThrow(
+        local: local,
+        speed: speed,
+        lengthPx: track.drag.distance,
+        durationMs: track.durationMs,
+        me: current.poseFor(who),
+        them: current.poseFor(otherSeat(who)),
+        aim: current.aim,
+      ),
+    );
+  }
 
   void _endPointer(int pointer, Offset position, double tMs) {
     final bed = _bed;
@@ -271,39 +312,7 @@ class _MatchScreenState extends State<MatchScreen> {
                         onPointerMove: _move,
                         onPointerUp: _up,
                         onPointerCancel: _cancel,
-                        child: GestureDetector(
-                          onPanStart: (_) {
-                            _drag = Offset.zero;
-                            _panAt = DateTime.now();
-                          },
-                          onPanUpdate: (details) => _drag += details.delta,
-                          onPanEnd: (details) {
-                            final velocity = details.velocity.pixelsPerSecond;
-                            final sample = velocity.distance > 40 ? velocity : _drag;
-                            if (sample.distance < 8) return;
-                            final speed = (sample.distance / 2000).clamp(0.0, 1.0);
-                            final local = Vec2(sample.dx, -sample.dy);
-                            final started = _panAt;
-                            final durationMs = started == null ? 0.0 : DateTime.now().difference(started).inMilliseconds.toDouble();
-                            widget.onSwipe(const Vec2(0.5, 0.92), local, speed);
-                            final report = widget.onAim;
-                            if (report == null) return;
-                            final current = widget.match;
-                            final who = widget.seat;
-                            report(
-                              assessThrow(
-                                local: local,
-                                speed: speed,
-                                lengthPx: _drag.distance,
-                                durationMs: durationMs,
-                                me: current.poseFor(who),
-                                them: current.poseFor(otherSeat(who)),
-                                aim: current.aim,
-                              ),
-                            );
-                          },
-                          child: SandField(image: _image, shader: _shader, generation: field.generation),
-                        ),
+                        child: SandField(image: _image, shader: _shader, generation: field.generation),
                       ),
                       _Glow(dir: aim),
                       if (truckHere)
@@ -348,6 +357,41 @@ class _MatchScreenState extends State<MatchScreen> {
 }
 
 const _mass = TextStyle(color: Palette.ink, fontSize: 22, fontWeight: FontWeight.w700);
+
+class _ThrowTrack {
+  _ThrowTrack(this.pointer);
+
+  final int pointer;
+  final _started = DateTime.now();
+  final _points = <Offset>[];
+  final _times = <Duration>[];
+
+  double get durationMs => DateTime.now().difference(_started).inMilliseconds.toDouble();
+
+  void add(Offset global, Duration time) {
+    if (_points.isNotEmpty && _points.last == global && _times.last == time) return;
+    _points.add(global);
+    _times.add(time);
+  }
+
+  Offset get drag {
+    if (_points.length < 2) return Offset.zero;
+    return _points.last - _points.first;
+  }
+
+  Offset get velocity {
+    if (_points.length < 2) return Offset.zero;
+    final end = _times.last;
+    var index = _times.length - 1;
+    while (index > 0 && end - _times[index - 1] <= const Duration(milliseconds: 100)) {
+      index -= 1;
+    }
+    if (index == _times.length - 1) index = _times.length - 2;
+    final micros = (end - _times[index]).inMicroseconds;
+    if (micros <= 0) return drag;
+    return (_points.last - _points[index]) * (1000000 / micros);
+  }
+}
 
 String _clock(int ms) {
   final seconds = (ms / 1000).ceil();

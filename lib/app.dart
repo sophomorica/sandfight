@@ -19,6 +19,7 @@ import 'net/tcp_pipe.dart';
 import 'net/uwb_pose.dart';
 import 'telemetry/aim_log.dart';
 import 'telemetry/crash_reporting.dart';
+import 'telemetry/device_log.dart';
 import 'telemetry/game_watch.dart';
 import 'theme/palette.dart';
 
@@ -394,9 +395,11 @@ class _SandfightAppState extends State<SandfightApp> with SingleTickerProviderSt
     var roundEnded = false;
     var lengthMs = 0;
     for (final crumb in crumbs) {
+      if (crumb.signal == GameSignal.roundStart) unawaited(DeviceLog.instance.roundStarted());
       if (crumb.signal == GameSignal.roundEnd) {
         roundEnded = true;
         lengthMs = crumb.data['t_ms']?.toInt() ?? next.tMs;
+        unawaited(DeviceLog.instance.roundFinished());
       }
       if (crumb.signal == GameSignal.peerLost) {
         unawaited(report.failure(crumb.signal, crumb.data));
