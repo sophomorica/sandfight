@@ -5,9 +5,11 @@ import '../../theme/palette.dart';
 import 'dev_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.onFind, required this.lastWinner});
+  const HomeScreen({super.key, required this.onFind, required this.onCarve, required this.onRace, required this.lastWinner});
 
   final VoidCallback onFind;
+  final VoidCallback onCarve;
+  final VoidCallback onRace;
   final String? lastWinner;
 
   @override
@@ -43,6 +45,36 @@ class HomeScreen extends StatelessWidget {
                   onPressed: onFind,
                   child: const Text('Find nearby players'),
                 ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      key: const ValueKey('free-play'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Palette.ink,
+                        side: const BorderSide(color: Palette.metal),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      onPressed: onCarve,
+                      child: const Text('Free play'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      key: const ValueKey('draw-race'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Palette.ink,
+                        side: const BorderSide(color: Palette.metal),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      onPressed: onRace,
+                      child: const Text('Draw race'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 28),
               const Text('How to play', style: TextStyle(color: Palette.dust, fontSize: 14)),
@@ -80,6 +112,24 @@ class _VersionLabel extends StatefulWidget {
 class _VersionLabelState extends State<_VersionLabel> {
   int _taps = 0;
   DateTime? _window;
+  String _label = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final label = await bundleVersion();
+      if (!mounted) return;
+      setState(() => _label = label);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _label = '');
+    }
+  }
 
   void _open() {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DevScreen()));
@@ -104,7 +154,11 @@ class _VersionLabelState extends State<_VersionLabel> {
     return GestureDetector(
       onTap: _tap,
       onLongPress: _open,
-      child: const Text(appRelease, key: Key('version-label'), style: TextStyle(color: Palette.dust, fontSize: 13)),
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 18),
+        child: Text(_label, key: const Key('version-label'), style: const TextStyle(color: Palette.dust, fontSize: 13)),
+      ),
     );
   }
 }

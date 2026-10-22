@@ -8,7 +8,7 @@ import 'aim_log.dart';
 import 'device_log.dart';
 import 'game_watch.dart';
 
-enum AppScreen { home, search, match, result, blocked }
+enum AppScreen { home, search, match, result, blocked, carve, race }
 
 typedef GameRecord = void Function(String line);
 

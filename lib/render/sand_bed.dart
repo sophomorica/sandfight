@@ -71,6 +71,7 @@ class SandBed {
   List<SandSample> _shown = const [];
 
   int? _activePointer;
+  bool rake = false;
 
   bool get stroking => _activePointer != null;
 
@@ -139,6 +140,39 @@ class SandBed {
     generation += 1;
   }
 
+  void smoothGarden() {
+    final a = Float32List.fromList(height);
+    final b = Float32List(height.length);
+    var src = a;
+    var dst = b;
+    for (var pass = 0; pass < 12; pass++) {
+      dst.setRange(0, dst.length, src);
+      for (var y = 1; y < rows - 1; y++) {
+        var i = y * cols + 1;
+        for (var x = 1; x < cols - 1; x++, i++) {
+          dst[i] = (src[i] + src[i - 1] + src[i + 1] + src[i - cols] + src[i + cols]) / 5;
+        }
+      }
+      final swap = src;
+      src = dst;
+      dst = swap;
+    }
+    height.setAll(0, src);
+    _dirty = null;
+    generation += 1;
+  }
+
+  void resetGarden() {
+    height.setAll(0, fresh);
+    _strokes.clear();
+    _activePointer = null;
+    _shown = const [];
+    _closedLen = 0;
+    _closedPeak = 0;
+    _dirty = null;
+    generation += 1;
+  }
+
   Uint8List encodeHeight() {
     final n = cols * rows;
     final out = Uint8List(n * 4);
@@ -200,6 +234,20 @@ class SandBed {
   }
 
   void _carveFinger(_Stroke stroke, double ax, double ay, double bx, double by) {
+    _carveGroove(stroke, ax, ay, bx, by);
+    if (!rake) return;
+    final dx = bx - ax;
+    final dy = by - ay;
+    final len = math.sqrt(dx * dx + dy * dy);
+    if (len < 1e-6) return;
+    const gap = 16.0;
+    final ox = -dy / len * gap;
+    final oy = dx / len * gap;
+    _carveGroove(stroke, ax + ox, ay + oy, bx + ox, by + oy);
+    _carveGroove(stroke, ax - ox, ay - oy, bx - ox, by - oy);
+  }
+
+  void _carveGroove(_Stroke stroke, double ax, double ay, double bx, double by) {
     final c = cellsPerPt;
     final s = _speed01(stroke.speed);
     final r = SandLook.fingerRadius * c * (1 + SandLook.widthGain * s);
