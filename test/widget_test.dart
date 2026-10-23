@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sandfight/app.dart';
 import 'package:sandfight/features/home/home_screen.dart';
 import 'package:sandfight/features/match/match_screen.dart';
+import 'package:sandfight/features/zen/carve_screen.dart';
 import 'package:sandfight/net/session.dart';
 import 'package:sandfight/render/sand_field.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -97,6 +98,22 @@ void main() {
     expect(find.byKey(const Key('their-mass')), findsNothing);
   });
 
+  testWidgets('a zen stroke asks for a frame while the bed is idle', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: CarveScreen(onLeave: _noop)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pumpAndSettle();
+    expect(tester.binding.hasScheduledFrame, isFalse);
+
+    final field = tester.getRect(find.byType(SandField));
+    final gesture = await tester.startGesture(field.center);
+    await gesture.moveBy(const Offset(36, 0));
+    expect(tester.binding.hasScheduledFrame, isTrue);
+    await gesture.up();
+    await tester.pump();
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('a solo draw race names the glyph and hides pile mass', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const SandfightApp(machine: 'iPhone13,2', fakeUwb: true));
@@ -131,6 +148,8 @@ void main() {
     expect(find.byKey(const Key('my-mass')), findsNothing);
   });
 }
+
+void _noop() {}
 
 class _Harness extends StatefulWidget {
   const _Harness({required this.drive});

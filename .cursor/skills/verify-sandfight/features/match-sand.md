@@ -24,7 +24,7 @@ Preconditions:
 
 - **Angles and flick.** Run `flutter test test/sand_shot_test.dart --reporter expanded`. The test exits 0. Stdout contains `RASTER up-30`, `RASTER up-0`, `RASTER up-minus-30`, and `RASTER fast-flick`.
 - **Files.** The same run writes `artifacts/sand/up-30.png`, `up-0.png`, `up-minus-30.png`, and `fast-flick.png`. Each PNG is a portrait match screen with one groove, the pile numbers, and an Aim control that reads `Aim`.
-- **Geometry.** Run `flutter test test/sand_bed_test.dart --reporter expanded`. The upward-stroke test passes. The fast-flick test passes. Stdout contains one `BENCH` line. `worst` on that line is under 16 ms.
+- **Geometry.** Run `flutter test test/sand_bed_test.dart --reporter expanded`. The upward-stroke test passes. The fast-flick test passes. Stdout contains one `BENCH` line. `worst` on that line is under 16 ms. `encode` on that line is under 4 ms.
 - **Proof.** Keep the PNGs and the transcript. The straight-up groove is darker in a band along the stroke than the sand well to its side.
 
 ## Gotchas
