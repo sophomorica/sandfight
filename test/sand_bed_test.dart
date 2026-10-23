@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sandfight/render/aim_overlay.dart';
@@ -124,8 +125,14 @@ void main() {
   test('carve time on a phone-sized bed', () {
     const width = 390.0;
     const height = 700.0;
-    final bed = SandBed.fit(width, height);
     final samples = line(width / 2, height * 0.86, 0, height * 0.62, 320, 48);
+    final warmup = SandBed.fit(width, height);
+    play(warmup, samples);
+    warmup.encodeHeight();
+
+    final bed = SandBed.fit(width, height);
+    final shown = Uint8List.fromList(bed.encodeHeight());
+    expect(shown.length, bed.cols * bed.rows * 4);
     final watch = Stopwatch()..start();
     bed.down(1, samples.first.x, samples.first.y, samples.first.tMs);
     var worstUs = 0;
@@ -154,7 +161,46 @@ void main() {
     );
     expect(bed.cols * bed.rows, lessThanOrEqualTo(SandLook.maxCells));
     expect(worstUs, lessThan(16000));
+    expect(encodeUs, lessThan(4000));
+    expect(_packedMatches(bed, bytes), isTrue);
+    expect(_untouchedBytes(bed, bytes, shown), isTrue);
   });
+
+  test('a later stroke repacks the cells it moved', () {
+    final bed = SandBed.fit(120, 180, simScale: 1);
+    bed.encodeHeight();
+    play(bed, line(60, 150, 0, 80, 400, 16));
+    expect(_packedMatches(bed, bed.encodeHeight()), isTrue);
+    play(bed, line(30, 150, 20, 80, 400, 16));
+    expect(_packedMatches(bed, bed.encodeHeight()), isTrue);
+    bed.smoothGarden();
+    expect(_packedMatches(bed, bed.encodeHeight()), isTrue);
+    bed.resetGarden();
+    expect(_packedMatches(bed, bed.encodeHeight()), isTrue);
+  });
+}
+
+bool _packedMatches(SandBed bed, Uint8List bytes) {
+  const span = SandLook.heightMax - SandLook.heightMin;
+  for (var i = 0; i < bed.cols * bed.rows; i++) {
+    final o = i * 4;
+    if (bytes[o + 2] != 0 || bytes[o + 3] != 255) return false;
+    final t = (bytes[o] + bytes[o + 1] / 255.0) / 255.0;
+    final height = t * span + SandLook.heightMin;
+    if ((height - bed.height[i]).abs() > 0.002) return false;
+  }
+  return true;
+}
+
+bool _untouchedBytes(SandBed bed, Uint8List bytes, Uint8List shown) {
+  var held = 0;
+  for (var i = 0; i < bed.height.length; i++) {
+    if (bed.height[i] != bed.fresh[i]) continue;
+    final o = i * 4;
+    if (bytes[o] != shown[o] || bytes[o + 1] != shown[o + 1]) return false;
+    held++;
+  }
+  return held > bed.height.length ~/ 2;
 }
 
 void play(SandBed bed, List<SandSample> samples) {

@@ -66,6 +66,9 @@ class SandBed {
 
   int generation = 0;
   _Dirty? _dirty;
+  _Dirty? _stale;
+  bool _staleAll = true;
+  Uint8List? _packed;
   int _nextSid = 1;
   final _strokes = <int, _Stroke>{};
   List<SandSample> _shown = const [];
@@ -136,7 +139,12 @@ class SandBed {
     final box = _dirty;
     if (box == null) return;
     _relax(box.x0, box.y0, box.x1, box.y1);
+    final left = math.max(1, box.x0 - 2);
+    final top = math.max(1, box.y0 - 2);
+    final right = math.min(cols - 2, box.x1 + 2);
+    final bottom = math.min(rows - 2, box.y1 + 2);
     _dirty = null;
+    _markStale(left, top, math.min(cols - 1, right + 1), math.min(rows - 1, bottom + 1));
     generation += 1;
   }
 
@@ -159,6 +167,8 @@ class SandBed {
     }
     height.setAll(0, src);
     _dirty = null;
+    _stale = null;
+    _staleAll = true;
     generation += 1;
   }
 
@@ -170,25 +180,43 @@ class SandBed {
     _closedLen = 0;
     _closedPeak = 0;
     _dirty = null;
+    _stale = null;
+    _staleAll = true;
     generation += 1;
   }
 
   Uint8List encodeHeight() {
-    final n = cols * rows;
-    final out = Uint8List(n * 4);
-    const span = SandLook.heightMax - SandLook.heightMin;
-    for (var i = 0; i < n; i++) {
-      final t = ((height[i] - SandLook.heightMin) / span).clamp(0.0, 1.0);
-      final scaled = t * 255.0;
-      final r = scaled.floor().clamp(0, 255);
-      final g = ((scaled - r) * 255.0).round().clamp(0, 255);
-      final o = i * 4;
-      out[o] = r;
-      out[o + 1] = g;
-      out[o + 2] = 0;
-      out[o + 3] = 255;
+    final out = _packed ??= Uint8List(cols * rows * 4);
+    if (_staleAll) {
+      _writePacked(out, 0, 0, cols - 1, rows - 1);
+      _staleAll = false;
+      _stale = null;
+      return out;
+    }
+    final box = _stale;
+    if (box != null) {
+      _writePacked(out, box.x0, box.y0, box.x1, box.y1);
+      _stale = null;
     }
     return out;
+  }
+
+  void _writePacked(Uint8List out, int x0, int y0, int x1, int y1) {
+    const span = SandLook.heightMax - SandLook.heightMin;
+    for (var y = y0; y <= y1; y++) {
+      var i = y * cols + x0;
+      for (var x = x0; x <= x1; x++, i++) {
+        final t = ((height[i] - SandLook.heightMin) / span).clamp(0.0, 1.0);
+        final scaled = t * 255.0;
+        final r = scaled.floor().clamp(0, 255);
+        final g = ((scaled - r) * 255.0).round().clamp(0, 255);
+        final o = i * 4;
+        out[o] = r;
+        out[o + 1] = g;
+        out[o + 2] = 0;
+        out[o + 3] = 255;
+      }
+    }
   }
 
   double at(int x, int y) => height[y * cols + x];
@@ -504,6 +532,25 @@ class SandBed {
     final box = _dirty;
     if (box == null) {
       _dirty = _Dirty(left, top, right, bottom);
+    } else {
+      if (left < box.x0) box.x0 = left;
+      if (top < box.y0) box.y0 = top;
+      if (right > box.x1) box.x1 = right;
+      if (bottom > box.y1) box.y1 = bottom;
+    }
+    _markStale(left, top, right, bottom);
+  }
+
+  void _markStale(int x0, int y0, int x1, int y1) {
+    if (_staleAll) return;
+    final left = math.max(0, x0);
+    final top = math.max(0, y0);
+    final right = math.min(cols - 1, x1);
+    final bottom = math.min(rows - 1, y1);
+    if (right < left || bottom < top) return;
+    final box = _stale;
+    if (box == null) {
+      _stale = _Dirty(left, top, right, bottom);
       return;
     }
     if (left < box.x0) box.x0 = left;
