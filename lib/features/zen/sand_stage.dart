@@ -105,6 +105,7 @@ class SandStageState extends State<SandStage> {
   void _scheduleFrame() {
     if (_frameQueued) return;
     _frameQueued = true;
+    SchedulerBinding.instance.scheduleFrame();
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _frameQueued = false;
       if (!mounted) return;
