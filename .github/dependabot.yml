@@ -1,12 +1,19 @@
+# Patrick 11/13 12:25pm: one grouped weekly Dependabot PR per ecosystem.
+# Each ecosystem has a minor/patch group and a separate major group, so at most
+# 2 open Dependabot PRs per ecosystem (open-pull-requests-limit: 2).
+# Major bumps wait for an independent review.
 version: 2
 updates:
   - package-ecosystem: "pub"
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     groups:
       minor-and-patch:
         update-types:
           - "minor"
           - "patch"
+      major:
+        update-types:
+          - "major"
