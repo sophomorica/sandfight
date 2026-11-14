@@ -2,12 +2,13 @@
 # Each ecosystem has a minor/patch group and a separate major group, so at most
 # 2 open Dependabot PRs per ecosystem (open-pull-requests-limit: 2).
 # Major bumps wait for an independent review.
+# Patrick 11/14 5:48pm (Actions over quota): monthly instead of weekly, same groups.
 version: 2
 updates:
   - package-ecosystem: "pub"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     open-pull-requests-limit: 2
     groups:
       minor-and-patch:
